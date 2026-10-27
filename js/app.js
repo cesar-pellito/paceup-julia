@@ -1,0 +1,83 @@
+// app.js — ponto de entrada. Registra o service worker (com atualização
+// controlada), semeia a agenda e inicia o router. Sem plano de corrida, não há
+// onboarding: o app abre direto na tela Hoje.
+
+import * as repo from "./data/repository.js";
+import { semearHub } from "./data/seed.js";
+import { iniciarRouter } from "./views/router.js";
+import { carregarEAplicarTema } from "./services/theme.js";
+import { el, limpar, botao } from "./views/components/ui.js";
+
+// ---------------------------------------------------------------------------
+// Service worker + banner de atualização controlada
+// ---------------------------------------------------------------------------
+function mostrarBannerAtualizacao(worker) {
+  if (document.getElementById("update-banner")) return;
+  const banner = el("div", { class: "update-banner", id: "update-banner", role: "alert" }, [
+    el("span", { text: "Nova versão disponível." }),
+    botao("Atualizar", {
+      onClick: () => {
+        worker.postMessage({ type: "SKIP_WAITING" });
+      },
+    }),
+  ]);
+  document.body.appendChild(banner);
+}
+
+async function registrarServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const tinhaController = !!navigator.serviceWorker.controller;
+    const reg = await navigator.serviceWorker.register("./service-worker.js");
+
+    // Já há um SW esperando (aba reaberta): oferece atualizar.
+    if (reg.waiting && navigator.serviceWorker.controller) mostrarBannerAtualizacao(reg.waiting);
+
+    reg.addEventListener("updatefound", () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener("statechange", () => {
+        // Instalado E já havia um controller => é atualização, não 1ª instalação.
+        if (novo.state === "installed" && navigator.serviceWorker.controller) {
+          mostrarBannerAtualizacao(novo);
+        }
+      });
+    });
+
+    // Quando o novo SW assume, recarrega uma única vez para carregar a casca nova.
+    // Na PRIMEIRA instalação (não havia controller), não recarrega — evita o
+    // flash de reload logo na abertura inicial.
+    let recarregou = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!tinhaController || recarregou) return;
+      recarregou = true;
+      window.location.reload();
+    });
+  } catch (e) {
+    // Falha ao registrar SW não impede o app de rodar (só perde o offline).
+    console.warn("Service worker não registrado:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+async function iniciar() {
+  const container = document.getElementById("app");
+  // Atualização do banco esperando outra aba (com a versão antiga) fechar.
+  repo.definirAoBloquear(() => {
+    limpar(container);
+    container.appendChild(el("p", { class: "sub", text: "Atualizando os dados do app… Se demorar, feche as outras abas ou janelas do PaceUp." }));
+  });
+  try {
+    await carregarEAplicarTema();
+    await semearHub(); // agenda-padrão etc.; só insere o que ainda não existe
+    iniciarRouter();
+  } catch (e) {
+    limpar(container);
+    container.appendChild(el("p", { class: "erro", text: "Erro ao iniciar o app: " + (e && e.message) }));
+  }
+}
+
+registrarServiceWorker();
+iniciar();

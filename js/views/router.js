@@ -1,0 +1,96 @@
+// router.js — navegação por hash com suporte a parâmetros.
+//   #/hoje                 -> aba
+//   #/treinos              -> aba Treinos (a semana)
+//   #/nutricao/<segmento>  -> aba Nutrição (refeicoes | semana | orientacoes)
+//   #/agenda               -> editor da semana-padrão
+//   #/metas                -> editor de metas
+//   #/ajuda                -> tela de ajuda
+//
+// Renderização atômica por token (evita render duplicado em gatilhos próximos).
+
+import { renderHoje } from "./today.js";
+import { renderTreinos } from "./treinos.js";
+import { renderNutricao } from "./nutricao.js";
+import { renderAjustes } from "./settings.js";
+import { renderAjuda } from "./help.js";
+import { renderEditorAgenda } from "./agenda-editor.js";
+import { renderEditorMetas } from "./metas-editor.js";
+import { el, limpar } from "./components/ui.js";
+
+const ABAS = { hoje: renderHoje, treinos: renderTreinos, nutricao: renderNutricao, ajustes: renderAjustes };
+const CHEIAS = {
+  agenda: (c) => renderEditorAgenda(c),
+  metas: (c) => renderEditorMetas(c),
+  ajuda: (c) => renderAjuda(c),
+};
+
+let token = 0;
+
+function parseHash() {
+  const bruto = (location.hash || "#/hoje").replace(/^#\//, "");
+  const partes = bruto.split("/");
+  const rota = partes[0] || "hoje";
+  const param = partes[1] ? decodeURIComponent(partes[1]) : null;
+  return { rota, param };
+}
+
+function marcarAba(rota) {
+  document.querySelectorAll(".tabbar a").forEach((a) => {
+    if (a.dataset.rota === rota) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+}
+
+async function montar({ manterScroll = false } = {}) {
+  const { rota, param } = parseHash();
+  const meu = ++token;
+  const ehAba = !!ABAS[rota];
+  marcarAba(ehAba ? rota : "");
+
+  // fecha qualquer bottom sheet aberto ao trocar de tela
+  const sheet = document.querySelector(".sheet-overlay");
+  if (sheet) sheet.remove();
+
+  const scrollAntes = window.scrollY;
+  const render = ABAS[rota] || CHEIAS[rota] || ABAS.hoje;
+  const temp = document.createElement("div");
+  try {
+    await render(temp, param);
+  } catch (e) {
+    limpar(temp);
+    temp.appendChild(el("p", { class: "erro", text: "Erro ao carregar a tela: " + (e && e.message) }));
+  }
+  if (meu !== token) return;
+
+  const container = document.getElementById("app");
+  limpar(container);
+  while (temp.firstChild) container.appendChild(temp.firstChild);
+  if (manterScroll) {
+    window.scrollTo(0, scrollAntes);
+  } else {
+    container.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+}
+
+export function iniciarRouter() {
+  // App ativo: revela a barra de navegação (escondida durante o onboarding).
+  document.body.classList.remove("sem-nav");
+  window.addEventListener("hashchange", () => montar());
+  if (!location.hash) location.hash = "#/hoje";
+  else montar();
+}
+
+/** Redesenha a tela atual sem voltar ao topo (após marcar um item, por exemplo). */
+export function recarregar() {
+  return montar({ manterScroll: true });
+}
+
+export function irPara(rota) {
+  location.hash = "#/" + rota;
+}
+
+export function voltar() {
+  if (history.length > 1) history.back();
+  else irPara("hoje");
+}
