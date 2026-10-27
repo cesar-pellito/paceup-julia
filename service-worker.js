@@ -10,7 +10,7 @@
 //
 // Ao mudar qualquer arquivo da casca, incremente CACHE_VERSAO.
 
-const CACHE_VERSAO = "v1";
+const CACHE_VERSAO = "v2";
 // Prefixo próprio: o PaceUp do Cesar vive na mesma origem (github.io) e apaga
 // os caches "treinos-corrida-*"; os desta versão não podem colidir com os dele.
 const CACHE_NOME = `paceup-julia-${CACHE_VERSAO}`;

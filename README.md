@@ -19,7 +19,7 @@ Uso diário no celular, **offline por completo**, **custo zero**, sem build e se
 | Metas iniciais de proteína | 150–170 g | **100–130 g** (ponto de partida; ajuste em Ajustes → Metas) |
 | Banco IndexedDB | `treinos-corrida` | `paceup-julia` |
 | Cache do service worker | `treinos-corrida-*` | `paceup-julia-*` |
-| Cor | verde-azulado | roxo |
+| Cor | verde-azulado | azul |
 
 Banco e cache têm nomes próprios porque os dois apps ficam na mesma origem (`cesar-pellito.github.io`): instalar os dois no mesmo celular não mistura dados nem apaga o cache um do outro.
 
@@ -99,7 +99,7 @@ ES modules não abrem via `file://`. Na raiz: `npx serve` e abra `http://localho
 
 1. No celular dela, abra `https://cesar-pellito.github.io/paceup-julia/` no **Chrome**.
 2. Menu **⋮ → Instalar app** (ou **Adicionar à tela inicial → Instalar**).
-3. Abra pelo ícone roxo do PaceUp. Funciona offline a partir daí.
+3. Abra pelo ícone azul do PaceUp. Funciona offline a partir daí.
 
 Usar o app instalado reduz o risco de o navegador limpar os dados para liberar espaço. Mesmo assim, faça backup.
 
